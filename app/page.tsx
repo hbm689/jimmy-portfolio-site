@@ -5,6 +5,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
+  ArrowUpRight,
   Camera,
   ExternalLink,
   Film,
@@ -112,7 +113,31 @@ function getEmbedData(url: string) {
   };
 }
 
-function BilingualTitle({
+function MetaLine({
+  label,
+  value,
+  subValue,
+}: {
+  label: string;
+  value: string;
+  subValue?: string;
+}) {
+  if (!value && !subValue) return null;
+
+  return (
+    <div className="border-t border-white/[0.08] py-4">
+      <p className="text-[10px] uppercase tracking-[0.24em] text-stone-500">
+        {label}
+      </p>
+      {value && <p className="mt-2 text-sm text-stone-200">{value}</p>}
+      {subValue && (
+        <p className="mt-1 text-xs leading-5 text-stone-500">{subValue}</p>
+      )}
+    </div>
+  );
+}
+
+function ProjectTitle({
   zh,
   en,
   large = false,
@@ -124,65 +149,41 @@ function BilingualTitle({
   return (
     <div>
       <h3
-        className={`font-semibold tracking-tight text-white ${
-          large ? "text-3xl md:text-4xl" : "text-xl"
-        }`}
+        className={[
+          "font-medium tracking-[-0.04em] text-stone-50",
+          large
+            ? "text-4xl leading-[0.95] md:text-6xl"
+            : "text-2xl leading-tight md:text-3xl",
+        ].join(" ")}
       >
         {zh || "未命名作品"}
       </h3>
-      <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-neutral-400">
+      <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.28em] text-[#c8a96b]">
         {en || "Untitled Work"}
       </p>
     </div>
   );
 }
 
-function InfoBlock({
-  labelZh,
-  labelEn,
+function Description({
   zh,
   en,
+  compact = false,
 }: {
-  labelZh: string;
-  labelEn: string;
   zh: string;
   en: string;
+  compact?: boolean;
 }) {
   if (!zh && !en) return null;
 
   return (
-    <div className="rounded-2xl bg-white/[0.05] p-3">
-      <p className="text-xs text-neutral-500">
-        {labelZh} / {labelEn}
-      </p>
-      {zh && <p className="mt-1 text-sm text-neutral-200">{zh}</p>}
-      {en && <p className="mt-0.5 text-xs leading-5 text-neutral-400">{en}</p>}
-    </div>
-  );
-}
-
-function NoteBlock({ zh, en }: { zh: string; en: string }) {
-  if (!zh && !en) return null;
-
-  return (
-    <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+    <div className={compact ? "mt-5 space-y-3" : "mt-7 space-y-4"}>
       {zh && (
-        <p className="text-sm leading-6 text-neutral-200">
-          <span className="mr-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-neutral-400">
-            中文
-          </span>
+        <p className="text-sm leading-7 text-stone-300 md:text-[15px]">
           {zh}
         </p>
       )}
-
-      {en && (
-        <p className="text-sm leading-6 text-neutral-400">
-          <span className="mr-2 rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-neutral-500">
-            EN
-          </span>
-          {en}
-        </p>
-      )}
+      {en && <p className="text-xs leading-6 text-stone-500 md:text-sm">{en}</p>}
     </div>
   );
 }
@@ -199,15 +200,85 @@ function ImageBox({
   if (!src) {
     return (
       <div
-        className={`flex items-center justify-center rounded-2xl bg-neutral-900 text-neutral-600 ${className}`}
+        className={`flex items-center justify-center bg-[#111214] text-stone-700 ${className}`}
       >
         <ImageIcon className="h-8 w-8" />
       </div>
     );
   }
 
+  return <img src={src} alt={alt} className={`object-cover ${className}`} />;
+}
+
+function EmptyState({ type }: { type: "video" | "photo" }) {
   return (
-    <img src={src} alt={alt} className={`object-cover ${className}`} />
+    <div className="rounded-[2rem] border border-white/[0.08] bg-white/[0.025] p-12 text-center">
+      {type === "video" ? (
+        <Film className="mx-auto mb-4 h-10 w-10 text-stone-600" />
+      ) : (
+        <ImageIcon className="mx-auto mb-4 h-10 w-10 text-stone-600" />
+      )}
+      <p className="text-sm tracking-wide text-stone-500">
+        目前沒有符合條件的作品。
+      </p>
+    </div>
+  );
+}
+
+function CinematicHeroStrip() {
+  const panels = Array.from({ length: 14 }, (_, index) => index);
+
+  return (
+    <section className="relative w-full overflow-hidden border-y border-white/[0.08]">
+      <div className="relative h-[230px] md:h-[310px] lg:h-[350px]">
+        <div className="absolute inset-0 grid grid-cols-[repeat(14,minmax(0,1fr))]">
+          {panels.map((panel, index) => (
+            <motion.div
+              key={panel}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{
+                duration: 0.42,
+                delay: index * 0.075,
+                ease: "easeOut",
+              }}
+              className={index % 2 === 0 ? "bg-black" : "bg-white"}
+            />
+          ))}
+        </div>
+
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.22),transparent_18%,transparent_82%,rgba(0,0,0,0.22))]" />
+
+        <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 1.15,
+              delay: 0.75,
+              ease: "easeOut",
+            }}
+            className="max-w-5xl font-serif text-[1.05rem] leading-relaxed tracking-[0.01em] text-white mix-blend-difference md:text-[1.5rem] lg:text-[1.95rem]"
+          >
+            In the age of streaming, a refined eye subtracts the noise from the
+            world.
+          </motion.p>
+
+          <motion.p
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 1.05,
+              delay: 1.75,
+              ease: "easeOut",
+            }}
+            className="mt-5 text-sm font-medium tracking-[0.16em] text-white mix-blend-difference md:mt-6 md:text-base lg:text-lg"
+          >
+            串流時代，用純粹的眼光，為世界做減法。
+          </motion.p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -304,146 +375,101 @@ export default function Home() {
     filteredPhotos[0];
 
   return (
-    <main className="min-h-screen bg-neutral-950 text-neutral-100">
-      <section className="relative overflow-hidden border-b border-white/10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.16),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.09),transparent_30%)]" />
+    <main className="min-h-screen overflow-hidden bg-[#0b0b0d] text-stone-100">
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_15%_10%,rgba(200,169,107,0.16),transparent_24%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.07),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_18%)]" />
 
-        <div className="relative mx-auto grid max-w-7xl gap-10 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:px-10 lg:py-24">
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55 }}
-            className="flex flex-col justify-center"
-          >
-            <div className="mb-6 flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm text-neutral-300">
-              <Camera className="h-4 w-4" />
-              Bilingual Video & Photo Portfolio
+      <section className="relative z-10">
+        <div className="mx-auto max-w-[1500px] px-5 py-6 md:px-8">
+          <nav className="flex items-center justify-between border-b border-white/[0.08] pb-6">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.34em] text-[#c8a96b]">
+                TOP JIMMY
+              </p>
+              <p className="mt-1 text-xs text-stone-500">
+                Videography / Photography / Visual Storytelling
+              </p>
             </div>
 
-            <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-white md:text-6xl">
-              Jimmy Portfolio
-            </h1>
+            <a
+              href="mailto:yourmail@example.com"
+              className="group hidden items-center gap-2 rounded-full border border-white/[0.1] px-4 py-2 text-xs uppercase tracking-[0.2em] text-stone-400 transition hover:border-[#c8a96b]/60 hover:text-stone-100 md:inline-flex"
+            >
+              Contact
+              <ArrowUpRight className="h-3.5 w-3.5 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+            </a>
+          </nav>
+        </div>
 
-            <p className="mt-6 max-w-2xl text-base leading-8 text-neutral-300 md:text-lg">
-              中英文對照的影像作品集。影片作品與平面攝影作品皆由 Google Sheet
-              管理，更新資料後網站會自動讀取最新內容。
-            </p>
+        <CinematicHeroStrip />
 
-            <div className="mt-8 flex flex-wrap gap-3 text-sm text-neutral-300">
-              <span className="rounded-full bg-white/10 px-4 py-2">
-                影片作品 / Video Works
-              </span>
-              <span className="rounded-full bg-white/10 px-4 py-2">
-                平面作品 / Photo Works
-              </span>
-              <span className="rounded-full bg-white/10 px-4 py-2">
-                Google Sheet CMS
-              </span>
-              <span className="rounded-full bg-white/10 px-4 py-2">
-                Bilingual Copy
-              </span>
+        <div className="mx-auto max-w-[1500px] px-5 py-12 md:px-8 md:py-16">
+          <div className="grid gap-10 border-b border-white/[0.08] pb-12 md:grid-cols-[1.05fr_0.95fr] md:items-end">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.32em] text-[#c8a96b]">
+                TOP JIMMY
+              </p>
+
+              <h1 className="mt-4 text-5xl font-medium leading-[0.9] tracking-[-0.065em] text-stone-50 md:text-7xl lg:text-[6.4rem]">
+                VISUAL
+                <br />
+                PORTFOLIO
+              </h1>
             </div>
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.55, delay: 0.12 }}
-            className="overflow-hidden rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl backdrop-blur"
-          >
-            <div className="grid grid-cols-3 gap-2">
-              {(photos[0]?.photos ?? []).slice(0, 6).map((photo, index) => (
-                <div
-                  key={`${photo}-${index}`}
-                  className={`aspect-square overflow-hidden rounded-2xl bg-neutral-900 ${
-                    index === 0 ? "col-span-2 row-span-2" : ""
+            <div className="space-y-5 md:pb-2">
+              <p className="max-w-xl text-[15px] leading-8 text-stone-300">
+                串流時代，用純粹的眼光，為世界做減法。
+              </p>
+
+              <p className="max-w-xl font-serif text-sm leading-7 text-stone-500">
+                In the age of streaming, a refined eye subtracts the noise from
+                the world.
+              </p>
+
+              <div className="flex flex-wrap gap-3 pt-2">
+                <button
+                  onClick={() => setMode("video")}
+                  className={`rounded-full px-5 py-3 text-xs uppercase tracking-[0.2em] transition ${
+                    mode === "video"
+                      ? "bg-[#c8a96b] text-black"
+                      : "border border-white/[0.1] text-stone-400 hover:border-[#c8a96b]/60 hover:text-stone-100"
                   }`}
                 >
-                  <ImageBox
-                    src={photo}
-                    alt="Portfolio preview"
-                    className="h-full w-full"
-                  />
-                </div>
-              ))}
+                  Video Works
+                </button>
 
-              {!photos[0] &&
-                Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className={`aspect-square overflow-hidden rounded-2xl bg-neutral-900 ${
-                      index === 0 ? "col-span-2 row-span-2" : ""
-                    }`}
-                  />
-                ))}
-            </div>
-
-            <div className="flex items-start gap-4 p-5">
-              <div className="rounded-2xl bg-white/10 p-3">
-                <ImageIcon className="h-6 w-6" />
-              </div>
-
-              <div>
-                <p className="text-lg font-semibold text-white">
-                  作品資料來源 / Data Source
-                </p>
-                <p className="mt-1 text-sm leading-6 text-neutral-300">
-                  作品內容由 Google Sheet 控制。新增、排序、隱藏作品都可直接在表格內完成。
-                </p>
+                <button
+                  onClick={() => setMode("photo")}
+                  className={`rounded-full px-5 py-3 text-xs uppercase tracking-[0.2em] transition ${
+                    mode === "photo"
+                      ? "bg-[#c8a96b] text-black"
+                      : "border border-white/[0.1] text-stone-400 hover:border-[#c8a96b]/60 hover:text-stone-100"
+                  }`}
+                >
+                  Photo Works
+                </button>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-6 pt-10 lg:px-10">
-        <div className="grid gap-3 rounded-3xl border border-white/10 bg-white/[0.06] p-2 md:grid-cols-2">
-          <button
-            onClick={() => setMode("video")}
-            className={`flex items-center justify-center gap-3 rounded-2xl px-5 py-4 text-sm font-semibold transition ${
-              mode === "video"
-                ? "bg-white text-neutral-950"
-                : "text-neutral-300 hover:bg-white/10"
-            }`}
-          >
-            <PlayCircle className="h-5 w-5" />
-            動態作品 / Video Works
-          </button>
-
-          <button
-            onClick={() => setMode("photo")}
-            className={`flex items-center justify-center gap-3 rounded-2xl px-5 py-4 text-sm font-semibold transition ${
-              mode === "photo"
-                ? "bg-white text-neutral-950"
-                : "text-neutral-300 hover:bg-white/10"
-            }`}
-          >
-            <ImageIcon className="h-5 w-5" />
-            平面作品 / Photo Works
-          </button>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 py-10 lg:px-10">
-        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <section className="relative z-10 mx-auto max-w-[1500px] px-5 pb-24 md:px-8">
+        <div className="mb-10 grid gap-6 border-y border-white/[0.08] py-7 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
-            <h2 className="text-2xl font-semibold text-white">
-              {mode === "video"
-                ? "動態作品 / Video Works"
-                : "平面作品 / Photo Works"}
-            </h2>
-            <p className="mt-1 text-sm text-neutral-400">
-              {mode === "video"
-                ? `目前共有 ${videos.length} 個影片作品`
-                : `目前共有 ${photos.length} 個平面作品專案`}
+            <p className="text-[11px] uppercase tracking-[0.32em] text-[#c8a96b]">
+              {mode === "video" ? "Motion Works" : "Still Works"}
             </p>
+            <h2 className="mt-2 text-4xl font-medium tracking-[-0.05em] text-stone-50 md:text-6xl">
+              {mode === "video" ? "動態作品" : "平面作品"}
+            </h2>
           </div>
 
-          <div className="relative w-full md:w-96">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+          <div className="relative w-full lg:w-[420px]">
+            <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-600" />
             <input
-              className="w-full rounded-2xl border border-white/10 bg-white/[0.07] py-3 pl-11 pr-4 text-sm outline-none transition focus:border-white/30"
-              placeholder="搜尋中英文作品、客戶、分類"
+              className="w-full rounded-full border border-white/[0.08] bg-white/[0.035] py-4 pl-12 pr-5 text-sm text-stone-200 outline-none transition placeholder:text-stone-600 focus:border-[#c8a96b]/60"
+              placeholder="搜尋作品、客戶、分類 / Search works"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -451,247 +477,239 @@ export default function Home() {
         </div>
 
         {loading && (
-          <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-10 text-center text-neutral-400">
+          <div className="rounded-[2rem] border border-white/[0.08] bg-white/[0.025] p-12 text-center text-stone-500">
             正在讀取 Google Sheet 作品資料...
           </div>
         )}
 
         {error && (
-          <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-6 text-sm leading-7 text-red-200">
+          <div className="rounded-[2rem] border border-red-500/30 bg-red-500/10 p-8 text-sm leading-7 text-red-200">
             <p className="font-semibold">讀取 Google Sheet 失敗</p>
             <p className="mt-2">{error}</p>
             <p className="mt-2">
-              請確認 .env.local 的 GOOGLE_SHEET_ID 正確，並且 Google Sheet
-              已設定為知道連結者可檢視、且已發布到網路。
+              請確認 Vercel / .env.local 的 GOOGLE_SHEET_ID 正確，並且 Google
+              Sheet 已設定為知道連結者可檢視、且已發布到網路。
             </p>
           </div>
         )}
 
         {!loading && !error && mode === "video" && (
-          <div className="grid gap-6 xl:grid-cols-2">
-            {filteredVideos.map((work, index) => {
-              const embed = getEmbedData(work.url);
-              const Icon = embed.icon;
+          <>
+            <div className="grid gap-8 xl:grid-cols-2">
+              {filteredVideos.map((work, index) => {
+                const embed = getEmbedData(work.url);
+                const Icon = embed.icon;
 
-              return (
-                <motion.article
-                  key={work.id}
-                  initial={{ opacity: 0, y: 18 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: index * 0.04 }}
-                  className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.07] shadow-xl transition hover:-translate-y-1 hover:bg-white/[0.1]"
-                >
-                  <div className="aspect-video bg-black">
-                    {embed.embedUrl ? (
-                      <iframe
-                        className="h-full w-full"
-                        src={embed.embedUrl}
-                        title={work.titleEn || work.titleZh}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                      />
-                    ) : (
-                      <div className="flex h-full flex-col items-center justify-center gap-3 bg-neutral-900 text-neutral-400">
-                        <ExternalLink className="h-8 w-8" />
-                        <p className="text-sm">
-                          此連結無法內嵌，請點外部連結觀看。
-                        </p>
+                return (
+                  <motion.article
+                    key={work.id}
+                    initial={{ opacity: 0, y: 26 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45, delay: index * 0.05 }}
+                    className="group overflow-hidden rounded-[2.2rem] border border-white/[0.08] bg-white/[0.03] transition duration-500 hover:border-[#c8a96b]/40 hover:bg-white/[0.045]"
+                  >
+                    <div className="aspect-video overflow-hidden bg-black">
+                      {embed.embedUrl ? (
+                        <iframe
+                          className="h-full w-full"
+                          src={embed.embedUrl}
+                          title={work.titleEn || work.titleZh}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center gap-4 bg-[#111214] text-stone-600">
+                          <ExternalLink className="h-9 w-9" />
+                          <p className="text-sm">
+                            此連結無法內嵌，請點外部連結觀看。
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-7 md:p-9">
+                      <div className="mb-7 flex items-center justify-between gap-4">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-stone-500">
+                          <Icon className="h-3.5 w-3.5 text-[#c8a96b]" />
+                          {embed.label}
+                        </span>
+                        <span className="text-xs text-stone-600">
+                          {work.year}
+                        </span>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="p-6">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                      <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs text-neutral-300">
-                        <Icon className="h-3.5 w-3.5" />
-                        {embed.label}
-                      </span>
+                      <ProjectTitle zh={work.titleZh} en={work.titleEn} />
+
+                      <div className="mt-8 grid gap-x-7 md:grid-cols-3">
+                        <MetaLine
+                          label="Client"
+                          value={work.clientZh}
+                          subValue={work.clientEn}
+                        />
+                        <MetaLine
+                          label="Category"
+                          value={work.categoryZh}
+                          subValue={work.categoryEn}
+                        />
+                        <MetaLine
+                          label="Role"
+                          value={work.roleZh}
+                          subValue={work.roleEn}
+                        />
+                      </div>
+
+                      <Description zh={work.noteZh} en={work.noteEn} compact />
+
+                      <a
+                        href={work.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-8 inline-flex items-center gap-2 rounded-full bg-stone-100 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-black transition hover:bg-[#c8a96b]"
+                      >
+                        Open Work
+                        <ArrowUpRight className="h-4 w-4" />
+                      </a>
                     </div>
+                  </motion.article>
+                );
+              })}
+            </div>
 
-                    <BilingualTitle zh={work.titleZh} en={work.titleEn} />
-
-                    <div className="mt-4 grid gap-3">
-                      <InfoBlock
-                        labelZh="客戶 / 專案"
-                        labelEn="Client / Project"
-                        zh={work.clientZh}
-                        en={work.clientEn}
-                      />
-                      <InfoBlock
-                        labelZh="分類"
-                        labelEn="Category"
-                        zh={work.categoryZh}
-                        en={work.categoryEn}
-                      />
-                      <InfoBlock
-                        labelZh="角色"
-                        labelEn="Role"
-                        zh={work.roleZh}
-                        en={work.roleEn}
-                      />
-                    </div>
-
-                    <p className="mt-3 text-xs text-neutral-500">
-                      年份 / Year：{work.year}
-                    </p>
-
-                    <NoteBlock zh={work.noteZh} en={work.noteEn} />
-
-                    <a
-                      href={work.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-sm text-neutral-200 transition hover:border-white/30 hover:bg-white/10"
-                    >
-                      開啟原始連結 / Open Source Link
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </div>
-                </motion.article>
-              );
-            })}
-          </div>
+            {filteredVideos.length === 0 && <EmptyState type="video" />}
+          </>
         )}
 
         {!loading && !error && mode === "photo" && (
-          <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-            <div className="grid gap-4">
-              {filteredPhotos.map((project, index) => (
-                <motion.article
-                  key={project.id}
-                  initial={{ opacity: 0, y: 18 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: index * 0.04 }}
-                  onClick={() => setSelectedPhotoId(project.id)}
-                  className={`cursor-pointer overflow-hidden rounded-3xl border shadow-xl transition hover:-translate-y-1 ${
-                    selectedPhotoProject?.id === project.id
-                      ? "border-white/40 bg-white/[0.14]"
-                      : "border-white/10 bg-white/[0.07] hover:bg-white/[0.1]"
-                  }`}
-                >
-                  <div className="grid gap-4 p-4 md:grid-cols-[120px_1fr]">
-                    <div className="aspect-square overflow-hidden rounded-2xl bg-neutral-900">
-                      <ImageBox
-                        src={project.cover}
-                        alt={project.titleEn || project.titleZh}
-                        className="h-full w-full"
-                      />
-                    </div>
-
-                    <div className="flex min-w-0 flex-col justify-center">
-                      <span className="mb-2 inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs text-neutral-300">
-                        <ImageIcon className="h-3.5 w-3.5" />
-                        {project.photos.length} Photos
-                      </span>
-
-                      <BilingualTitle
-                        zh={project.titleZh}
-                        en={project.titleEn}
-                      />
-
-                      <p className="mt-2 text-sm text-neutral-400">
-                        {project.year} · {project.categoryZh}
-                      </p>
-                      <p className="text-xs text-neutral-500">
-                        {project.categoryEn}
-                      </p>
-                    </div>
-                  </div>
-                </motion.article>
-              ))}
-            </div>
-
-            {selectedPhotoProject && (
-              <div className="xl:sticky xl:top-6 xl:self-start">
-                <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.07] shadow-xl">
-                  <div className="p-6">
-                    <div className="mb-4 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs text-neutral-300">
-                        {selectedPhotoProject.categoryZh}
-                      </span>
-                      <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs text-neutral-300">
-                        {selectedPhotoProject.categoryEn}
-                      </span>
-                      <span className="rounded-full bg-white/10 px-3 py-1.5 text-xs text-neutral-300">
-                        {selectedPhotoProject.year}
-                      </span>
-                    </div>
-
-                    <BilingualTitle
-                      zh={selectedPhotoProject.titleZh}
-                      en={selectedPhotoProject.titleEn}
-                      large
-                    />
-
-                    <div className="mt-5 grid gap-3 md:grid-cols-2">
-                      <InfoBlock
-                        labelZh="客戶 / 專案"
-                        labelEn="Client / Project"
-                        zh={selectedPhotoProject.clientZh}
-                        en={selectedPhotoProject.clientEn}
-                      />
-                      <InfoBlock
-                        labelZh="角色"
-                        labelEn="Role"
-                        zh={selectedPhotoProject.roleZh}
-                        en={selectedPhotoProject.roleEn}
-                      />
-                    </div>
-
-                    <NoteBlock
-                      zh={selectedPhotoProject.noteZh}
-                      en={selectedPhotoProject.noteEn}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 p-3 md:grid-cols-3">
-                    {selectedPhotoProject.photos.slice(0, 6).map((photo, i) => (
-                      <a
-                        key={`${selectedPhotoProject.id}-${photo}-${i}`}
-                        href={photo}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="group relative aspect-square overflow-hidden rounded-2xl bg-neutral-900"
-                      >
+          <>
+            <div className="grid gap-8 xl:grid-cols-[0.78fr_1.22fr]">
+              <div className="space-y-4">
+                {filteredPhotos.map((project, index) => (
+                  <motion.article
+                    key={project.id}
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.42, delay: index * 0.05 }}
+                    onClick={() => setSelectedPhotoId(project.id)}
+                    className={`group cursor-pointer overflow-hidden rounded-[2rem] border transition duration-500 ${
+                      selectedPhotoProject?.id === project.id
+                        ? "border-[#c8a96b]/60 bg-[#c8a96b]/10"
+                        : "border-white/[0.08] bg-white/[0.03] hover:border-[#c8a96b]/35 hover:bg-white/[0.05]"
+                    }`}
+                  >
+                    <div className="grid gap-5 p-4 md:grid-cols-[150px_1fr] md:p-5">
+                      <div className="aspect-[4/3] overflow-hidden rounded-[1.35rem] bg-[#111214]">
                         <ImageBox
-                          src={photo}
-                          alt={`${selectedPhotoProject.titleEn} preview ${
-                            i + 1
-                          }`}
-                          className="h-full w-full transition duration-500 group-hover:scale-105"
+                          src={project.cover}
+                          alt={project.titleEn || project.titleZh}
+                          className="h-full w-full transition duration-700 group-hover:scale-105"
                         />
-                        <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/20" />
-                        <span className="absolute bottom-3 left-3 rounded-full bg-black/55 px-3 py-1 text-xs text-white backdrop-blur">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
+                      </div>
+
+                      <div className="flex min-w-0 flex-col justify-center">
+                        <div className="mb-4 flex items-center gap-3">
+                          <span className="text-[10px] uppercase tracking-[0.24em] text-[#c8a96b]">
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
+                          <span className="text-[10px] uppercase tracking-[0.22em] text-stone-600">
+                            {project.photos.length} Photos
+                          </span>
+                        </div>
+
+                        <h3 className="text-2xl font-medium tracking-[-0.045em] text-stone-50">
+                          {project.titleZh || "未命名作品"}
+                        </h3>
+                        <p className="mt-2 text-[11px] uppercase tracking-[0.24em] text-stone-500">
+                          {project.titleEn || "Untitled Work"}
+                        </p>
+
+                        <p className="mt-4 text-sm text-stone-500">
+                          {project.year} · {project.categoryZh}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.article>
+                ))}
               </div>
-            )}
-          </div>
+
+              {selectedPhotoProject && (
+                <motion.div
+                  key={selectedPhotoProject.id}
+                  initial={{ opacity: 0, y: 26 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45 }}
+                  className="xl:sticky xl:top-6 xl:self-start"
+                >
+                  <div className="overflow-hidden rounded-[2.4rem] border border-white/[0.08] bg-white/[0.035]">
+                    <div className="p-7 md:p-10">
+                      <div className="mb-7 flex flex-wrap gap-3">
+                        <span className="rounded-full border border-white/[0.08] px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-stone-500">
+                          {selectedPhotoProject.categoryZh}
+                        </span>
+                        <span className="rounded-full border border-white/[0.08] px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-stone-500">
+                          {selectedPhotoProject.year}
+                        </span>
+                      </div>
+
+                      <ProjectTitle
+                        zh={selectedPhotoProject.titleZh}
+                        en={selectedPhotoProject.titleEn}
+                        large
+                      />
+
+                      <div className="mt-10 grid gap-x-8 md:grid-cols-2">
+                        <MetaLine
+                          label="Client"
+                          value={selectedPhotoProject.clientZh}
+                          subValue={selectedPhotoProject.clientEn}
+                        />
+                        <MetaLine
+                          label="Role"
+                          value={selectedPhotoProject.roleZh}
+                          subValue={selectedPhotoProject.roleEn}
+                        />
+                      </div>
+
+                      <Description
+                        zh={selectedPhotoProject.noteZh}
+                        en={selectedPhotoProject.noteEn}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 p-2 md:grid-cols-3">
+                      {selectedPhotoProject.photos.slice(0, 6).map((photo, i) => (
+                        <a
+                          key={`${selectedPhotoProject.id}-${photo}-${i}`}
+                          href={photo}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={`group relative overflow-hidden bg-[#111214] ${
+                            i === 0
+                              ? "col-span-2 aspect-[4/3] rounded-[1.8rem] md:col-span-2"
+                              : "aspect-square rounded-[1.4rem]"
+                          }`}
+                        >
+                          <ImageBox
+                            src={photo}
+                            alt={`${selectedPhotoProject.titleEn} preview ${
+                              i + 1
+                            }`}
+                            className="h-full w-full transition duration-700 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/25" />
+                          <span className="absolute bottom-4 left-4 rounded-full bg-black/55 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white backdrop-blur">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {filteredPhotos.length === 0 && <EmptyState type="photo" />}
+          </>
         )}
-
-        {!loading &&
-          !error &&
-          mode === "video" &&
-          filteredVideos.length === 0 && (
-            <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.04] p-10 text-center text-neutral-400">
-              <Film className="mx-auto mb-4 h-10 w-10" />
-              <p>目前沒有符合條件的影片作品。</p>
-            </div>
-          )}
-
-        {!loading &&
-          !error &&
-          mode === "photo" &&
-          filteredPhotos.length === 0 && (
-            <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.04] p-10 text-center text-neutral-400">
-              <ImageIcon className="mx-auto mb-4 h-10 w-10" />
-              <p>目前沒有符合條件的平面作品。</p>
-            </div>
-          )}
       </section>
     </main>
   );
