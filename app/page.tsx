@@ -254,8 +254,8 @@ function PixelStrip({
   const radiusSize =
     isRevealPhase && !isComplete ? Math.max(0, 2 - revealProgress * 2) : 0;
 
-  const viewBoxWidth = 1000;
-  const viewBoxHeight = 250;
+  const viewBoxWidth = 1800;
+  const viewBoxHeight = 320;
   const cellWidth = viewBoxWidth / PIXEL_COLUMNS;
   const cellHeight = viewBoxHeight / PIXEL_ROWS;
 
@@ -267,12 +267,12 @@ function PixelStrip({
 
   return (
     <div className="absolute inset-0 flex items-center justify-center">
-      <div className="relative h-[25vh] min-h-[190px] w-screen overflow-hidden">
+      <div className="relative h-[32vh] min-h-[260px] w-screen overflow-hidden">
         {showStrip && (
           <svg
             className="absolute inset-0 h-full w-full"
             viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
-            preserveAspectRatio="none"
+            preserveAspectRatio="xMidYMid slice"
           >
             <defs>
               <mask id={maskId}>
@@ -334,15 +334,15 @@ function PixelStrip({
 
             <g mask={`url(#${maskId})`}>
               <text
-                x="500"
-                y="108"
+                x="900"
+                y="138"
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill={textColor}
                 fontFamily='"Libre Baskerville", Georgia, serif'
-                fontSize="34"
+                fontSize="50"
                 letterSpacing="-0.7"
-                textLength="780"
+                textLength="1320"
                 lengthAdjust="spacingAndGlyphs"
               >
                 In the age of streaming, a refined eye subtracts the noise from
@@ -350,16 +350,16 @@ function PixelStrip({
               </text>
 
               <text
-                x="500"
-                y="160"
+                x="900"
+                y="210"
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fill={textColor}
                 fontFamily='"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif'
-                fontSize="18"
+                fontSize="26"
                 fontWeight="300"
                 letterSpacing="7"
-                textLength="430"
+                textLength="660"
                 lengthAdjust="spacing"
               >
                 串流時代，用純粹的眼光，為世界做減法。
