@@ -127,6 +127,25 @@ function getEmbedData(url: string) {
   };
 }
 
+function TitleWithColonBreak({ text }: { text: string }) {
+  const title = text || "未命名作品";
+  const match = title.match(/[:：]/);
+
+  if (!match || match.index === undefined) {
+    return <>{title}</>;
+  }
+
+  const splitIndex = match.index + 1;
+
+  return (
+    <>
+      {title.slice(0, splitIndex)}
+      <br />
+      {title.slice(splitIndex).trim()}
+    </>
+  );
+}
+
 function ImageBox({
   src,
   alt,
@@ -345,8 +364,7 @@ function PixelStrip({
                 textLength="1320"
                 lengthAdjust="spacingAndGlyphs"
               >
-                In the age of streaming, a refined eye subtracts the noise from
-                the world.
+                In the age of streaming, a refined eye subtracts the noise from the world.
               </text>
 
               <text
@@ -578,9 +596,10 @@ function VideoWorksSection({
                 <span className="text-xs text-stone-600">{activeWork.year}</span>
               </div>
 
-              <h3 className="max-w-[11ch] text-[2.35rem] font-medium leading-[1.02] tracking-[-0.04em] text-stone-50 md:text-[3.25rem]">
-                {activeWork.titleZh || "未命名作品"}
+              <h3 className="max-w-[14ch] break-words text-[1.75rem] font-medium leading-[1.26] tracking-[-0.02em] text-stone-50 md:text-[2.45rem]">
+                <TitleWithColonBreak text={activeWork.titleZh} />
               </h3>
+
               <p className="mt-4 text-[11px] uppercase tracking-[0.28em] text-[#c8a96b]">
                 {activeWork.titleEn || "Untitled Work"}
               </p>
@@ -757,9 +776,10 @@ function PhotoWorksSection({
                 {activeProject.year} · {activeProject.categoryZh}
               </p>
 
-              <h3 className="max-w-[11ch] text-[2.35rem] font-medium leading-[1.02] tracking-[-0.04em] text-neutral-950 md:text-[3.25rem]">
-                {activeProject.titleZh || "未命名作品"}
+              <h3 className="max-w-[14ch] break-words text-[1.75rem] font-medium leading-[1.26] tracking-[-0.02em] text-neutral-950 md:text-[2.45rem]">
+                <TitleWithColonBreak text={activeProject.titleZh} />
               </h3>
+
               <p className="mt-4 text-[11px] uppercase tracking-[0.28em] text-[#9c7a3c]">
                 {activeProject.titleEn || "Untitled Work"}
               </p>
