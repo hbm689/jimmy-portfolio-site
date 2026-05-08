@@ -6,13 +6,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowUpRight,
-  Camera,
   ExternalLink,
   Film,
   Image as ImageIcon,
   Link as LinkIcon,
   PlayCircle,
-  Search,
 } from "lucide-react";
 
 type VideoWork = {
@@ -53,6 +51,22 @@ type PortfolioData = {
   photos: PhotoProject[];
   updatedAt: string;
 };
+
+type IntroPhase =
+  | "blackReveal"
+  | "blackHold"
+  | "whiteBlank"
+  | "whiteReveal"
+  | "whiteHold";
+
+const PIXEL_COLUMNS = 42;
+const PIXEL_ROWS = 6;
+const REVEAL_DURATION = 3000;
+
+function seededNoise(seed: number) {
+  const value = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+  return value - Math.floor(value);
+}
 
 function getYouTubeId(url: string) {
   const patterns = [
@@ -113,81 +127,6 @@ function getEmbedData(url: string) {
   };
 }
 
-function MetaLine({
-  label,
-  value,
-  subValue,
-}: {
-  label: string;
-  value: string;
-  subValue?: string;
-}) {
-  if (!value && !subValue) return null;
-
-  return (
-    <div className="border-t border-white/[0.08] py-4">
-      <p className="text-[10px] uppercase tracking-[0.24em] text-stone-500">
-        {label}
-      </p>
-      {value && <p className="mt-2 text-sm text-stone-200">{value}</p>}
-      {subValue && (
-        <p className="mt-1 text-xs leading-5 text-stone-500">{subValue}</p>
-      )}
-    </div>
-  );
-}
-
-function ProjectTitle({
-  zh,
-  en,
-  large = false,
-}: {
-  zh: string;
-  en: string;
-  large?: boolean;
-}) {
-  return (
-    <div>
-      <h3
-        className={[
-          "font-medium tracking-[-0.04em] text-stone-50",
-          large
-            ? "text-4xl leading-[0.95] md:text-6xl"
-            : "text-2xl leading-tight md:text-3xl",
-        ].join(" ")}
-      >
-        {zh || "未命名作品"}
-      </h3>
-      <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.28em] text-[#c8a96b]">
-        {en || "Untitled Work"}
-      </p>
-    </div>
-  );
-}
-
-function Description({
-  zh,
-  en,
-  compact = false,
-}: {
-  zh: string;
-  en: string;
-  compact?: boolean;
-}) {
-  if (!zh && !en) return null;
-
-  return (
-    <div className={compact ? "mt-5 space-y-3" : "mt-7 space-y-4"}>
-      {zh && (
-        <p className="text-sm leading-7 text-stone-300 md:text-[15px]">
-          {zh}
-        </p>
-      )}
-      {en && <p className="text-xs leading-6 text-stone-500 md:text-sm">{en}</p>}
-    </div>
-  );
-}
-
 function ImageBox({
   src,
   alt,
@@ -200,7 +139,7 @@ function ImageBox({
   if (!src) {
     return (
       <div
-        className={`flex items-center justify-center bg-[#111214] text-stone-700 ${className}`}
+        className={`flex items-center justify-center bg-neutral-900 text-neutral-700 ${className}`}
       >
         <ImageIcon className="h-8 w-8" />
       </div>
@@ -210,84 +149,696 @@ function ImageBox({
   return <img src={src} alt={alt} className={`object-cover ${className}`} />;
 }
 
-function EmptyState({ type }: { type: "video" | "photo" }) {
+function BrandMark({ variant }: { variant: "dark" | "light" }) {
   return (
-    <div className="rounded-[2rem] border border-white/[0.08] bg-white/[0.025] p-12 text-center">
-      {type === "video" ? (
-        <Film className="mx-auto mb-4 h-10 w-10 text-stone-600" />
-      ) : (
-        <ImageIcon className="mx-auto mb-4 h-10 w-10 text-stone-600" />
-      )}
-      <p className="text-sm tracking-wide text-stone-500">
-        目前沒有符合條件的作品。
+    <div className="absolute left-5 top-7 z-20 w-[315px] text-center md:left-8 md:top-8">
+      <p className="font-serif text-[2rem] font-medium uppercase leading-none tracking-[0.08em] text-[#c8a96b] md:text-[2.45rem]">
+        TOP JIMMY
+      </p>
+      <p
+        className={[
+          "mt-3 text-[0.7rem] leading-none md:text-[0.84rem]",
+          variant === "dark" ? "text-stone-400" : "text-stone-500",
+        ].join(" ")}
+      >
+        Videography / Photography / Visual Storytelling
       </p>
     </div>
   );
 }
 
-function CinematicHeroStrip() {
-  const panels = Array.from({ length: 14 }, (_, index) => index);
+function PixelStrip({
+  phase,
+  stripColor,
+  textColor,
+}: {
+  phase: IntroPhase;
+  stripColor: string;
+  textColor: string;
+}) {
+  const [elapsed, setElapsed] = useState(0);
+
+  const isRevealPhase = phase === "blackReveal" || phase === "whiteReveal";
+  const isHoldPhase = phase === "blackHold" || phase === "whiteHold";
+  const isBlankPhase = phase === "whiteBlank";
+  const showStrip = !isBlankPhase;
+
+  const cells = useMemo(() => {
+    const result: Array<{
+      row: number;
+      column: number;
+      start: number;
+    }> = [];
+
+    for (let column = 0; column < PIXEL_COLUMNS; column += 1) {
+      const columnBase =
+        (column / Math.max(PIXEL_COLUMNS - 1, 1)) * (REVEAL_DURATION * 0.7) +
+        seededNoise(column + 11) * 260;
+
+      for (let row = 0; row < PIXEL_ROWS; row += 1) {
+        const verticalGrowth = row * (110 + seededNoise(column * 13 + 5) * 55);
+        const localJitter = seededNoise(column * 41 + row * 73 + 19) * 210;
+
+        result.push({
+          row,
+          column,
+          start: Math.min(
+            columnBase + verticalGrowth + localJitter,
+            REVEAL_DURATION - 90
+          ),
+        });
+      }
+    }
+
+    return result;
+  }, []);
+
+  useEffect(() => {
+    if (isRevealPhase) {
+      setElapsed(0);
+
+      let rafId = 0;
+      const startTime = performance.now();
+
+      const animate = (now: number) => {
+        const nextElapsed = Math.min(now - startTime, REVEAL_DURATION);
+        setElapsed(nextElapsed);
+
+        if (nextElapsed < REVEAL_DURATION) {
+          rafId = window.requestAnimationFrame(animate);
+        }
+      };
+
+      rafId = window.requestAnimationFrame(animate);
+
+      return () => {
+        window.cancelAnimationFrame(rafId);
+      };
+    }
+
+    if (isHoldPhase) {
+      setElapsed(REVEAL_DURATION);
+    }
+
+    if (isBlankPhase) {
+      setElapsed(0);
+    }
+  }, [phase, isRevealPhase, isHoldPhase, isBlankPhase]);
+
+  const revealProgress = Math.min(elapsed / REVEAL_DURATION, 1);
+  const isComplete = revealProgress >= 1 || isHoldPhase;
+
+  const gapSize =
+    isRevealPhase && !isComplete ? Math.max(0, 3 - revealProgress * 3) : 0;
+
+  const radiusSize =
+    isRevealPhase && !isComplete ? Math.max(0, 2 - revealProgress * 2) : 0;
+
+  const viewBoxWidth = 1000;
+  const viewBoxHeight = 250;
+  const cellWidth = viewBoxWidth / PIXEL_COLUMNS;
+  const cellHeight = viewBoxHeight / PIXEL_ROWS;
+
+  const visibleCells = isComplete
+    ? cells
+    : cells.filter((cell) => elapsed >= cell.start);
+
+  const maskId = `intro-pixel-mask-${phase}`;
 
   return (
-    <section className="relative w-full overflow-hidden border-y border-white/[0.08]">
-      <div className="relative h-[230px] md:h-[310px] lg:h-[350px]">
-        <div className="absolute inset-0 grid grid-cols-[repeat(14,minmax(0,1fr))]">
-          {panels.map((panel, index) => (
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="relative h-[25vh] min-h-[190px] w-screen overflow-hidden">
+        {showStrip && (
+          <svg
+            className="absolute inset-0 h-full w-full"
+            viewBox={`0 0 ${viewBoxWidth} ${viewBoxHeight}`}
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <mask id={maskId}>
+                <rect
+                  x="0"
+                  y="0"
+                  width={viewBoxWidth}
+                  height={viewBoxHeight}
+                  fill="black"
+                />
+
+                {isComplete ? (
+                  <rect
+                    x="0"
+                    y="0"
+                    width={viewBoxWidth}
+                    height={viewBoxHeight}
+                    fill="white"
+                  />
+                ) : (
+                  visibleCells.map((cell, index) => (
+                    <rect
+                      key={`mask-cell-${index}`}
+                      x={cell.column * cellWidth + gapSize / 2}
+                      y={cell.row * cellHeight + gapSize / 2}
+                      width={Math.max(cellWidth - gapSize, 0)}
+                      height={Math.max(cellHeight - gapSize, 0)}
+                      rx={radiusSize}
+                      ry={radiusSize}
+                      fill="white"
+                    />
+                  ))
+                )}
+              </mask>
+            </defs>
+
+            {isComplete ? (
+              <rect
+                x="0"
+                y="0"
+                width={viewBoxWidth}
+                height={viewBoxHeight}
+                fill={stripColor}
+              />
+            ) : (
+              visibleCells.map((cell, index) => (
+                <rect
+                  key={`strip-cell-${index}`}
+                  x={cell.column * cellWidth + gapSize / 2}
+                  y={cell.row * cellHeight + gapSize / 2}
+                  width={Math.max(cellWidth - gapSize, 0)}
+                  height={Math.max(cellHeight - gapSize, 0)}
+                  rx={radiusSize}
+                  ry={radiusSize}
+                  fill={stripColor}
+                />
+              ))
+            )}
+
+            <g mask={`url(#${maskId})`}>
+              <text
+                x="500"
+                y="108"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={textColor}
+                fontFamily='"Libre Baskerville", Georgia, serif'
+                fontSize="34"
+                letterSpacing="-0.7"
+                textLength="780"
+                lengthAdjust="spacingAndGlyphs"
+              >
+                In the age of streaming, a refined eye subtracts the noise from
+                the world.
+              </text>
+
+              <text
+                x="500"
+                y="160"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={textColor}
+                fontFamily='"Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif'
+                fontSize="18"
+                fontWeight="300"
+                letterSpacing="7"
+                textLength="430"
+                lengthAdjust="spacing"
+              >
+                串流時代，用純粹的眼光，為世界做減法。
+              </text>
+            </g>
+          </svg>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function IntroSection() {
+  const [phase, setPhase] = useState<IntroPhase>("blackReveal");
+
+  useEffect(() => {
+    let timer: number | undefined;
+
+    switch (phase) {
+      case "blackReveal":
+        timer = window.setTimeout(() => setPhase("blackHold"), 3000);
+        break;
+      case "blackHold":
+        timer = window.setTimeout(() => setPhase("whiteBlank"), 3000);
+        break;
+      case "whiteBlank":
+        timer = window.setTimeout(() => setPhase("whiteReveal"), 2000);
+        break;
+      case "whiteReveal":
+        timer = window.setTimeout(() => setPhase("whiteHold"), 3000);
+        break;
+      case "whiteHold":
+        timer = window.setTimeout(() => setPhase("blackReveal"), 3000);
+        break;
+    }
+
+    return () => {
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [phase]);
+
+  const isWhiteStage =
+    phase === "whiteBlank" || phase === "whiteReveal" || phase === "whiteHold";
+
+  const backgroundColor = isWhiteStage ? "#f7f5ef" : "#101010";
+  const stripColor = isWhiteStage ? "#050505" : "#ffffff";
+  const textColor = isWhiteStage ? "#ffffff" : "#050505";
+
+  return (
+    <section
+      className="relative h-screen shrink-0 snap-start overflow-hidden transition-colors duration-700"
+      style={{ backgroundColor }}
+    >
+      <BrandMark variant={isWhiteStage ? "light" : "dark"} />
+
+      <PixelStrip
+        phase={phase}
+        stripColor={stripColor}
+        textColor={textColor}
+      />
+
+      <div
+        className={[
+          "absolute bottom-8 left-1/2 -translate-x-1/2 text-center text-[10px] uppercase tracking-[0.28em]",
+          isWhiteStage ? "text-stone-500" : "text-stone-600",
+        ].join(" ")}
+      >
+        Scroll
+      </div>
+    </section>
+  );
+}
+
+function SectionLabel({
+  eyebrow,
+  title,
+  index,
+}: {
+  eyebrow: string;
+  title: string;
+  index: string;
+}) {
+  return (
+    <div className="mb-8 flex items-end justify-between border-b border-white/10 pb-5">
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.32em] text-[#c8a96b]">
+          {eyebrow}
+        </p>
+        <h2 className="mt-2 text-4xl font-medium tracking-[-0.055em] text-stone-50 md:text-6xl">
+          {title}
+        </h2>
+      </div>
+      <p className="hidden font-serif text-7xl leading-none text-white/[0.06] md:block">
+        {index}
+      </p>
+    </div>
+  );
+}
+
+function WorkMeta({
+  label,
+  zh,
+  en,
+}: {
+  label: string;
+  zh: string;
+  en?: string;
+}) {
+  if (!zh && !en) return null;
+
+  return (
+    <div className="border-t border-white/10 py-4">
+      <p className="text-[10px] uppercase tracking-[0.24em] text-stone-600">
+        {label}
+      </p>
+      {zh && <p className="mt-2 text-sm text-stone-200">{zh}</p>}
+      {en && <p className="mt-1 text-xs leading-5 text-stone-500">{en}</p>}
+    </div>
+  );
+}
+
+function LoadingBlock() {
+  return (
+    <div className="flex h-full items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.03] text-sm text-stone-500">
+      正在讀取 Google Sheet 作品資料...
+    </div>
+  );
+}
+
+function ErrorBlock({ error }: { error: string }) {
+  return (
+    <div className="rounded-[2rem] border border-red-500/30 bg-red-500/10 p-8 text-sm leading-7 text-red-200">
+      <p className="font-semibold">讀取 Google Sheet 失敗</p>
+      <p className="mt-2">{error}</p>
+      <p className="mt-2">
+        請確認 Vercel / .env.local 的 GOOGLE_SHEET_ID 正確，並且 Google Sheet
+        已設定為知道連結者可檢視、且已發布到網路。
+      </p>
+    </div>
+  );
+}
+
+function VideoWorksSection({
+  videos,
+  loading,
+  error,
+}: {
+  videos: VideoWork[];
+  loading: boolean;
+  error: string;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeWork = videos[activeIndex] ?? videos[0];
+  const embed = activeWork ? getEmbedData(activeWork.url) : null;
+  const Icon = embed?.icon ?? Film;
+
+  useEffect(() => {
+    if (activeIndex > videos.length - 1) {
+      setActiveIndex(0);
+    }
+  }, [videos.length, activeIndex]);
+
+  return (
+    <section className="min-h-screen shrink-0 snap-start bg-[#101010] px-5 py-8 text-stone-100 md:px-8 md:py-10">
+      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-[1500px] flex-col">
+        <SectionLabel eyebrow="Motion Works" title="動態作品" index="01" />
+
+        {loading && <LoadingBlock />}
+        {!loading && error && <ErrorBlock error={error} />}
+
+        {!loading && !error && !activeWork && (
+          <div className="flex flex-1 items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.03] text-stone-500">
+            目前沒有動態作品。
+          </div>
+        )}
+
+        {!loading && !error && activeWork && embed && (
+          <div className="grid flex-1 gap-8 lg:grid-cols-[1.35fr_0.65fr] lg:items-center">
             <motion.div
-              key={panel}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{
-                duration: 0.42,
-                delay: index * 0.075,
-                ease: "easeOut",
-              }}
-              className={index % 2 === 0 ? "bg-black" : "bg-white"}
-            />
-          ))}
+              key={activeWork.id}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55 }}
+              className="overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-2xl"
+            >
+              <div className="aspect-video">
+                {embed.embedUrl ? (
+                  <iframe
+                    className="h-full w-full"
+                    src={embed.embedUrl}
+                    title={activeWork.titleEn || activeWork.titleZh}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center gap-4 bg-neutral-900 text-stone-600">
+                    <ExternalLink className="h-10 w-10" />
+                    <p className="text-sm">此連結無法內嵌，請點外部連結觀看。</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            <motion.aside
+              key={`${activeWork.id}-copy`}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.08 }}
+              className="flex flex-col justify-center"
+            >
+              <div className="mb-6 flex items-center gap-3">
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-stone-500">
+                  <Icon className="h-3.5 w-3.5 text-[#c8a96b]" />
+                  {embed.label}
+                </span>
+                <span className="text-xs text-stone-600">{activeWork.year}</span>
+              </div>
+
+              <h3 className="text-4xl font-medium leading-[0.95] tracking-[-0.055em] text-stone-50 md:text-6xl">
+                {activeWork.titleZh || "未命名作品"}
+              </h3>
+              <p className="mt-4 text-[11px] uppercase tracking-[0.28em] text-[#c8a96b]">
+                {activeWork.titleEn || "Untitled Work"}
+              </p>
+
+              <div className="mt-8 grid gap-x-6 md:grid-cols-2 lg:grid-cols-1">
+                <WorkMeta
+                  label="Client"
+                  zh={activeWork.clientZh}
+                  en={activeWork.clientEn}
+                />
+                <WorkMeta
+                  label="Role"
+                  zh={activeWork.roleZh}
+                  en={activeWork.roleEn}
+                />
+                <WorkMeta
+                  label="Category"
+                  zh={activeWork.categoryZh}
+                  en={activeWork.categoryEn}
+                />
+              </div>
+
+              {(activeWork.noteZh || activeWork.noteEn) && (
+                <div className="mt-6 space-y-4">
+                  {activeWork.noteZh && (
+                    <p className="text-sm leading-7 text-stone-300">
+                      {activeWork.noteZh}
+                    </p>
+                  )}
+                  {activeWork.noteEn && (
+                    <p className="font-serif text-sm leading-7 text-stone-500">
+                      {activeWork.noteEn}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                <a
+                  href={activeWork.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full bg-stone-100 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-black transition hover:bg-[#c8a96b]"
+                >
+                  Open Work
+                  <ArrowUpRight className="h-4 w-4" />
+                </a>
+              </div>
+            </motion.aside>
+          </div>
+        )}
+
+        {!loading && !error && videos.length > 1 && (
+          <div className="mt-7 flex gap-2 overflow-x-auto pb-1">
+            {videos.map((work, index) => (
+              <button
+                key={work.id}
+                onClick={() => setActiveIndex(index)}
+                className={[
+                  "min-w-fit rounded-full border px-4 py-2 text-xs transition",
+                  activeIndex === index
+                    ? "border-[#c8a96b] bg-[#c8a96b] text-black"
+                    : "border-white/10 text-stone-500 hover:border-[#c8a96b]/60 hover:text-stone-100",
+                ].join(" ")}
+              >
+                {String(index + 1).padStart(2, "0")} ·{" "}
+                {work.titleZh || work.titleEn || "Untitled"}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PhotoWorksSection({
+  photos,
+  loading,
+  error,
+}: {
+  photos: PhotoProject[];
+  loading: boolean;
+  error: string;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeProject = photos[activeIndex] ?? photos[0];
+
+  useEffect(() => {
+    if (activeIndex > photos.length - 1) {
+      setActiveIndex(0);
+    }
+  }, [photos.length, activeIndex]);
+
+  return (
+    <section className="min-h-screen shrink-0 snap-start bg-[#f7f5ef] px-5 py-8 text-neutral-950 md:px-8 md:py-10">
+      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-[1500px] flex-col">
+        <div className="mb-8 flex items-end justify-between border-b border-black/10 pb-5">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.32em] text-[#9c7a3c]">
+              Still Works
+            </p>
+            <h2 className="mt-2 text-4xl font-medium tracking-[-0.055em] text-neutral-950 md:text-6xl">
+              平面作品
+            </h2>
+          </div>
+          <p className="hidden font-serif text-7xl leading-none text-black/[0.06] md:block">
+            02
+          </p>
         </div>
 
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.22),transparent_18%,transparent_82%,rgba(0,0,0,0.22))]" />
+        {loading && (
+          <div className="flex h-full items-center justify-center rounded-[2rem] border border-black/10 bg-black/[0.03] text-sm text-neutral-500">
+            正在讀取 Google Sheet 作品資料...
+          </div>
+        )}
 
-        <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 1.15,
-              delay: 0.75,
-              ease: "easeOut",
-            }}
-            className="max-w-5xl font-serif text-[1.05rem] leading-relaxed tracking-[0.01em] text-white mix-blend-difference md:text-[1.5rem] lg:text-[1.95rem]"
-          >
-            In the age of streaming, a refined eye subtracts the noise from the
-            world.
-          </motion.p>
+        {!loading && error && (
+          <div className="rounded-[2rem] border border-red-500/30 bg-red-500/10 p-8 text-sm leading-7 text-red-700">
+            <p className="font-semibold">讀取 Google Sheet 失敗</p>
+            <p className="mt-2">{error}</p>
+          </div>
+        )}
 
-          <motion.p
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 1.05,
-              delay: 1.75,
-              ease: "easeOut",
-            }}
-            className="mt-5 text-sm font-medium tracking-[0.16em] text-white mix-blend-difference md:mt-6 md:text-base lg:text-lg"
-          >
-            串流時代，用純粹的眼光，為世界做減法。
-          </motion.p>
-        </div>
+        {!loading && !error && !activeProject && (
+          <div className="flex flex-1 items-center justify-center rounded-[2rem] border border-black/10 bg-black/[0.03] text-neutral-500">
+            目前沒有平面作品。
+          </div>
+        )}
+
+        {!loading && !error && activeProject && (
+          <div className="grid flex-1 gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+            <motion.div
+              key={activeProject.id}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55 }}
+              className="grid grid-cols-3 gap-2"
+            >
+              {activeProject.photos.slice(0, 6).map((photo, index) => (
+                <a
+                  key={`${activeProject.id}-${photo}-${index}`}
+                  href={photo}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={[
+                    "group relative overflow-hidden bg-neutral-200",
+                    index === 0
+                      ? "col-span-2 row-span-2 aspect-square rounded-[2rem]"
+                      : "aspect-square rounded-[1.35rem]",
+                  ].join(" ")}
+                >
+                  <ImageBox
+                    src={photo}
+                    alt={`${activeProject.titleEn} preview ${index + 1}`}
+                    className="h-full w-full transition duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/20" />
+                  <span className="absolute bottom-4 left-4 rounded-full bg-black/60 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white backdrop-blur">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                </a>
+              ))}
+            </motion.div>
+
+            <motion.aside
+              key={`${activeProject.id}-copy`}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.08 }}
+              className="flex flex-col justify-center"
+            >
+              <p className="mb-5 text-xs text-neutral-500">
+                {activeProject.year} · {activeProject.categoryZh}
+              </p>
+
+              <h3 className="text-4xl font-medium leading-[0.95] tracking-[-0.055em] text-neutral-950 md:text-6xl">
+                {activeProject.titleZh || "未命名作品"}
+              </h3>
+              <p className="mt-4 text-[11px] uppercase tracking-[0.28em] text-[#9c7a3c]">
+                {activeProject.titleEn || "Untitled Work"}
+              </p>
+
+              <div className="mt-8 grid gap-x-6 md:grid-cols-2">
+                {(activeProject.clientZh || activeProject.clientEn) && (
+                  <div className="border-t border-black/10 py-4">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-neutral-400">
+                      Client
+                    </p>
+                    <p className="mt-2 text-sm text-neutral-900">
+                      {activeProject.clientZh}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-neutral-500">
+                      {activeProject.clientEn}
+                    </p>
+                  </div>
+                )}
+
+                {(activeProject.roleZh || activeProject.roleEn) && (
+                  <div className="border-t border-black/10 py-4">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-neutral-400">
+                      Role
+                    </p>
+                    <p className="mt-2 text-sm text-neutral-900">
+                      {activeProject.roleZh}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-neutral-500">
+                      {activeProject.roleEn}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {(activeProject.noteZh || activeProject.noteEn) && (
+                <div className="mt-6 space-y-4">
+                  {activeProject.noteZh && (
+                    <p className="text-sm leading-7 text-neutral-700">
+                      {activeProject.noteZh}
+                    </p>
+                  )}
+                  {activeProject.noteEn && (
+                    <p className="font-serif text-sm leading-7 text-neutral-500">
+                      {activeProject.noteEn}
+                    </p>
+                  )}
+                </div>
+              )}
+            </motion.aside>
+          </div>
+        )}
+
+        {!loading && !error && photos.length > 1 && (
+          <div className="mt-7 flex gap-2 overflow-x-auto pb-1">
+            {photos.map((project, index) => (
+              <button
+                key={project.id}
+                onClick={() => setActiveIndex(index)}
+                className={[
+                  "min-w-fit rounded-full border px-4 py-2 text-xs transition",
+                  activeIndex === index
+                    ? "border-neutral-950 bg-neutral-950 text-white"
+                    : "border-black/10 text-neutral-500 hover:border-neutral-950 hover:text-neutral-950",
+                ].join(" ")}
+              >
+                {String(index + 1).padStart(2, "0")} ·{" "}
+                {project.titleZh || project.titleEn || "Untitled"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
 }
 
 export default function Home() {
-  const [mode, setMode] = useState<"video" | "photo">("video");
   const [videos, setVideos] = useState<VideoWork[]>([]);
   const [photos, setPhotos] = useState<PhotoProject[]>([]);
-  const [query, setQuery] = useState("");
-  const [selectedPhotoId, setSelectedPhotoId] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -311,7 +862,6 @@ export default function Home() {
 
         setVideos(portfolio.videos);
         setPhotos(portfolio.photos);
-        setSelectedPhotoId(portfolio.photos[0]?.id ?? "");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
@@ -322,395 +872,24 @@ export default function Home() {
     loadPortfolio();
   }, []);
 
-  const filteredVideos = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
-    return videos.filter((work) => {
-      const text = [
-        work.titleZh,
-        work.titleEn,
-        work.clientZh,
-        work.clientEn,
-        work.categoryZh,
-        work.categoryEn,
-        work.roleZh,
-        work.roleEn,
-        work.noteZh,
-        work.noteEn,
-        work.year,
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return !q || text.includes(q);
-    });
-  }, [videos, query]);
-
-  const filteredPhotos = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
-    return photos.filter((project) => {
-      const text = [
-        project.titleZh,
-        project.titleEn,
-        project.clientZh,
-        project.clientEn,
-        project.categoryZh,
-        project.categoryEn,
-        project.roleZh,
-        project.roleEn,
-        project.noteZh,
-        project.noteEn,
-        project.year,
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return !q || text.includes(q);
-    });
-  }, [photos, query]);
-
-  const selectedPhotoProject =
-    photos.find((project) => project.id === selectedPhotoId) ??
-    filteredPhotos[0];
+  const sortedVideos = useMemo(() => videos, [videos]);
+  const sortedPhotos = useMemo(() => photos, [photos]);
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#0b0b0d] text-stone-100">
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_15%_10%,rgba(200,169,107,0.16),transparent_24%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.07),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_18%)]" />
+    <main className="h-screen snap-y snap-mandatory overflow-y-auto scroll-smooth bg-[#101010]">
+      <IntroSection />
 
-      <section className="relative z-10">
-        <div className="mx-auto max-w-[1500px] px-5 py-6 md:px-8">
-          <nav className="flex items-center justify-between border-b border-white/[0.08] pb-6">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.34em] text-[#c8a96b]">
-                TOP JIMMY
-              </p>
-              <p className="mt-1 text-xs text-stone-500">
-                Videography / Photography / Visual Storytelling
-              </p>
-            </div>
+      <VideoWorksSection
+        videos={sortedVideos}
+        loading={loading}
+        error={error}
+      />
 
-            <a
-              href="mailto:yourmail@example.com"
-              className="group hidden items-center gap-2 rounded-full border border-white/[0.1] px-4 py-2 text-xs uppercase tracking-[0.2em] text-stone-400 transition hover:border-[#c8a96b]/60 hover:text-stone-100 md:inline-flex"
-            >
-              Contact
-              <ArrowUpRight className="h-3.5 w-3.5 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </a>
-          </nav>
-        </div>
-
-        <CinematicHeroStrip />
-
-        <div className="mx-auto max-w-[1500px] px-5 py-12 md:px-8 md:py-16">
-          <div className="grid gap-10 border-b border-white/[0.08] pb-12 md:grid-cols-[1.05fr_0.95fr] md:items-end">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.32em] text-[#c8a96b]">
-                TOP JIMMY
-              </p>
-
-              <h1 className="mt-4 text-5xl font-medium leading-[0.9] tracking-[-0.065em] text-stone-50 md:text-7xl lg:text-[6.4rem]">
-                VISUAL
-                <br />
-                PORTFOLIO
-              </h1>
-            </div>
-
-            <div className="space-y-5 md:pb-2">
-              <p className="max-w-xl text-[15px] leading-8 text-stone-300">
-                串流時代，用純粹的眼光，為世界做減法。
-              </p>
-
-              <p className="max-w-xl font-serif text-sm leading-7 text-stone-500">
-                In the age of streaming, a refined eye subtracts the noise from
-                the world.
-              </p>
-
-              <div className="flex flex-wrap gap-3 pt-2">
-                <button
-                  onClick={() => setMode("video")}
-                  className={`rounded-full px-5 py-3 text-xs uppercase tracking-[0.2em] transition ${
-                    mode === "video"
-                      ? "bg-[#c8a96b] text-black"
-                      : "border border-white/[0.1] text-stone-400 hover:border-[#c8a96b]/60 hover:text-stone-100"
-                  }`}
-                >
-                  Video Works
-                </button>
-
-                <button
-                  onClick={() => setMode("photo")}
-                  className={`rounded-full px-5 py-3 text-xs uppercase tracking-[0.2em] transition ${
-                    mode === "photo"
-                      ? "bg-[#c8a96b] text-black"
-                      : "border border-white/[0.1] text-stone-400 hover:border-[#c8a96b]/60 hover:text-stone-100"
-                  }`}
-                >
-                  Photo Works
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="relative z-10 mx-auto max-w-[1500px] px-5 pb-24 md:px-8">
-        <div className="mb-10 grid gap-6 border-y border-white/[0.08] py-7 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.32em] text-[#c8a96b]">
-              {mode === "video" ? "Motion Works" : "Still Works"}
-            </p>
-            <h2 className="mt-2 text-4xl font-medium tracking-[-0.05em] text-stone-50 md:text-6xl">
-              {mode === "video" ? "動態作品" : "平面作品"}
-            </h2>
-          </div>
-
-          <div className="relative w-full lg:w-[420px]">
-            <Search className="pointer-events-none absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-600" />
-            <input
-              className="w-full rounded-full border border-white/[0.08] bg-white/[0.035] py-4 pl-12 pr-5 text-sm text-stone-200 outline-none transition placeholder:text-stone-600 focus:border-[#c8a96b]/60"
-              placeholder="搜尋作品、客戶、分類 / Search works"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </div>
-        </div>
-
-        {loading && (
-          <div className="rounded-[2rem] border border-white/[0.08] bg-white/[0.025] p-12 text-center text-stone-500">
-            正在讀取 Google Sheet 作品資料...
-          </div>
-        )}
-
-        {error && (
-          <div className="rounded-[2rem] border border-red-500/30 bg-red-500/10 p-8 text-sm leading-7 text-red-200">
-            <p className="font-semibold">讀取 Google Sheet 失敗</p>
-            <p className="mt-2">{error}</p>
-            <p className="mt-2">
-              請確認 Vercel / .env.local 的 GOOGLE_SHEET_ID 正確，並且 Google
-              Sheet 已設定為知道連結者可檢視、且已發布到網路。
-            </p>
-          </div>
-        )}
-
-        {!loading && !error && mode === "video" && (
-          <>
-            <div className="grid gap-8 xl:grid-cols-2">
-              {filteredVideos.map((work, index) => {
-                const embed = getEmbedData(work.url);
-                const Icon = embed.icon;
-
-                return (
-                  <motion.article
-                    key={work.id}
-                    initial={{ opacity: 0, y: 26 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.45, delay: index * 0.05 }}
-                    className="group overflow-hidden rounded-[2.2rem] border border-white/[0.08] bg-white/[0.03] transition duration-500 hover:border-[#c8a96b]/40 hover:bg-white/[0.045]"
-                  >
-                    <div className="aspect-video overflow-hidden bg-black">
-                      {embed.embedUrl ? (
-                        <iframe
-                          className="h-full w-full"
-                          src={embed.embedUrl}
-                          title={work.titleEn || work.titleZh}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                          allowFullScreen
-                        />
-                      ) : (
-                        <div className="flex h-full flex-col items-center justify-center gap-4 bg-[#111214] text-stone-600">
-                          <ExternalLink className="h-9 w-9" />
-                          <p className="text-sm">
-                            此連結無法內嵌，請點外部連結觀看。
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="p-7 md:p-9">
-                      <div className="mb-7 flex items-center justify-between gap-4">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] px-3 py-1.5 text-[11px] uppercase tracking-[0.18em] text-stone-500">
-                          <Icon className="h-3.5 w-3.5 text-[#c8a96b]" />
-                          {embed.label}
-                        </span>
-                        <span className="text-xs text-stone-600">
-                          {work.year}
-                        </span>
-                      </div>
-
-                      <ProjectTitle zh={work.titleZh} en={work.titleEn} />
-
-                      <div className="mt-8 grid gap-x-7 md:grid-cols-3">
-                        <MetaLine
-                          label="Client"
-                          value={work.clientZh}
-                          subValue={work.clientEn}
-                        />
-                        <MetaLine
-                          label="Category"
-                          value={work.categoryZh}
-                          subValue={work.categoryEn}
-                        />
-                        <MetaLine
-                          label="Role"
-                          value={work.roleZh}
-                          subValue={work.roleEn}
-                        />
-                      </div>
-
-                      <Description zh={work.noteZh} en={work.noteEn} compact />
-
-                      <a
-                        href={work.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-8 inline-flex items-center gap-2 rounded-full bg-stone-100 px-5 py-3 text-xs font-medium uppercase tracking-[0.18em] text-black transition hover:bg-[#c8a96b]"
-                      >
-                        Open Work
-                        <ArrowUpRight className="h-4 w-4" />
-                      </a>
-                    </div>
-                  </motion.article>
-                );
-              })}
-            </div>
-
-            {filteredVideos.length === 0 && <EmptyState type="video" />}
-          </>
-        )}
-
-        {!loading && !error && mode === "photo" && (
-          <>
-            <div className="grid gap-8 xl:grid-cols-[0.78fr_1.22fr]">
-              <div className="space-y-4">
-                {filteredPhotos.map((project, index) => (
-                  <motion.article
-                    key={project.id}
-                    initial={{ opacity: 0, y: 24 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.42, delay: index * 0.05 }}
-                    onClick={() => setSelectedPhotoId(project.id)}
-                    className={`group cursor-pointer overflow-hidden rounded-[2rem] border transition duration-500 ${
-                      selectedPhotoProject?.id === project.id
-                        ? "border-[#c8a96b]/60 bg-[#c8a96b]/10"
-                        : "border-white/[0.08] bg-white/[0.03] hover:border-[#c8a96b]/35 hover:bg-white/[0.05]"
-                    }`}
-                  >
-                    <div className="grid gap-5 p-4 md:grid-cols-[150px_1fr] md:p-5">
-                      <div className="aspect-[4/3] overflow-hidden rounded-[1.35rem] bg-[#111214]">
-                        <ImageBox
-                          src={project.cover}
-                          alt={project.titleEn || project.titleZh}
-                          className="h-full w-full transition duration-700 group-hover:scale-105"
-                        />
-                      </div>
-
-                      <div className="flex min-w-0 flex-col justify-center">
-                        <div className="mb-4 flex items-center gap-3">
-                          <span className="text-[10px] uppercase tracking-[0.24em] text-[#c8a96b]">
-                            {String(index + 1).padStart(2, "0")}
-                          </span>
-                          <span className="text-[10px] uppercase tracking-[0.22em] text-stone-600">
-                            {project.photos.length} Photos
-                          </span>
-                        </div>
-
-                        <h3 className="text-2xl font-medium tracking-[-0.045em] text-stone-50">
-                          {project.titleZh || "未命名作品"}
-                        </h3>
-                        <p className="mt-2 text-[11px] uppercase tracking-[0.24em] text-stone-500">
-                          {project.titleEn || "Untitled Work"}
-                        </p>
-
-                        <p className="mt-4 text-sm text-stone-500">
-                          {project.year} · {project.categoryZh}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.article>
-                ))}
-              </div>
-
-              {selectedPhotoProject && (
-                <motion.div
-                  key={selectedPhotoProject.id}
-                  initial={{ opacity: 0, y: 26 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45 }}
-                  className="xl:sticky xl:top-6 xl:self-start"
-                >
-                  <div className="overflow-hidden rounded-[2.4rem] border border-white/[0.08] bg-white/[0.035]">
-                    <div className="p-7 md:p-10">
-                      <div className="mb-7 flex flex-wrap gap-3">
-                        <span className="rounded-full border border-white/[0.08] px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-stone-500">
-                          {selectedPhotoProject.categoryZh}
-                        </span>
-                        <span className="rounded-full border border-white/[0.08] px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-stone-500">
-                          {selectedPhotoProject.year}
-                        </span>
-                      </div>
-
-                      <ProjectTitle
-                        zh={selectedPhotoProject.titleZh}
-                        en={selectedPhotoProject.titleEn}
-                        large
-                      />
-
-                      <div className="mt-10 grid gap-x-8 md:grid-cols-2">
-                        <MetaLine
-                          label="Client"
-                          value={selectedPhotoProject.clientZh}
-                          subValue={selectedPhotoProject.clientEn}
-                        />
-                        <MetaLine
-                          label="Role"
-                          value={selectedPhotoProject.roleZh}
-                          subValue={selectedPhotoProject.roleEn}
-                        />
-                      </div>
-
-                      <Description
-                        zh={selectedPhotoProject.noteZh}
-                        en={selectedPhotoProject.noteEn}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 p-2 md:grid-cols-3">
-                      {selectedPhotoProject.photos.slice(0, 6).map((photo, i) => (
-                        <a
-                          key={`${selectedPhotoProject.id}-${photo}-${i}`}
-                          href={photo}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={`group relative overflow-hidden bg-[#111214] ${
-                            i === 0
-                              ? "col-span-2 aspect-[4/3] rounded-[1.8rem] md:col-span-2"
-                              : "aspect-square rounded-[1.4rem]"
-                          }`}
-                        >
-                          <ImageBox
-                            src={photo}
-                            alt={`${selectedPhotoProject.titleEn} preview ${
-                              i + 1
-                            }`}
-                            className="h-full w-full transition duration-700 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/25" />
-                          <span className="absolute bottom-4 left-4 rounded-full bg-black/55 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white backdrop-blur">
-                            {String(i + 1).padStart(2, "0")}
-                          </span>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-
-            {filteredPhotos.length === 0 && <EmptyState type="photo" />}
-          </>
-        )}
-      </section>
+      <PhotoWorksSection
+        photos={sortedPhotos}
+        loading={loading}
+        error={error}
+      />
     </main>
   );
 }
