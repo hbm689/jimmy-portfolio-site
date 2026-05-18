@@ -89,6 +89,7 @@ function getGoogleDriveId(url: string) {
     /drive\.google\.com\/file\/d\/([^/]+)/,
     /drive\.google\.com\/open\?id=([^&]+)/,
     /drive\.google\.com\/uc\?id=([^&]+)/,
+    /drive\.google\.com\/thumbnail\?id=([^&]+)/,
   ];
 
   for (const pattern of patterns) {
@@ -97,6 +98,16 @@ function getGoogleDriveId(url: string) {
   }
 
   return null;
+}
+
+function getGoogleDriveImageUrl(url: string) {
+  if (!url) return "";
+
+  const id = getGoogleDriveId(url);
+
+  if (!id) return url;
+
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w1600`;
 }
 
 function getEmbedData(url: string) {
@@ -165,7 +176,14 @@ function ImageBox({
     );
   }
 
-  return <img src={src} alt={alt} className={`object-cover ${className}`} />;
+  return (
+    <img
+      src={getGoogleDriveImageUrl(src)}
+      alt={alt}
+      className={`object-cover ${className}`}
+      loading="lazy"
+    />
+  );
 }
 
 function BrandMark({ variant }: { variant: "dark" | "light" }) {
